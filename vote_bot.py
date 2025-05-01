@@ -36,7 +36,9 @@ chrome_options.add_argument("--incognito")
 chrome_options.add_argument("--headless")                # run without UI
 chrome_options.add_argument("--no-sandbox")              # required in many Linux CI environments
 chrome_options.add_argument("--disable-dev-shm-usage")   # overcome limited /dev/shm
-chrome_options.add_argument("--disable-gpu")             # recommended flag for headless on Linux
+chrome_options.add_argument("--disable-gpu")             # recommended for headless
+chrome_options.add_argument("--window-size=1920,1080")   # ensure proper rendering
+chrome_options.add_argument("--disable-extensions")      # reduce interference
 
 # create a unique user-data-dir so profiles never collide
 tmp_profile = tempfile.mkdtemp()
@@ -102,16 +104,58 @@ try:
             # Try primary selector
             try:
                 submit_button = WebDriverWait(driver, 5).until(
-                    EC.element_to_be_clickable((By.XPATH, "//span[text()='Submit']"))
+                    EC.element_to_be_clickable((By.XPATH, "//div[@role='button' and .//span[text()='Submit']]"))
                 )
             except:
                 print("Primary submit selector failed, trying fallback...")
                 submit_button = WebDriverWait(driver, 5).until(
-                    EC.element_to_be_clickable((By.XPATH, "//div[contains(text(), 'Submit')]"))
+                    EC.element_to_be_clickable((By.XPATH, "//div[contains(@class, 'uArJ5e') and .//span[contains(text(), 'Submit')]]"))
                 )
-            time.sleep(1)  # Brief delay to ensure form is ready
-            submit_button.click()
-            print("Submit button clicked")
+            
+            # Log button attributes for debugging
+            button_attrs = driver.execute_script(
+                "return { 'outerHTML': arguments[0].outerHTML, 'aria-disabled': arguments[0].getAttribute('aria-disabled'), 'class': arguments[0].getAttribute('class') };",
+                submit_button
+            )
+            print(f"Submit button attributes: {button_attrs}")
+
+            # Check if button is disabled
+            if button_attrs.get('aria-disabled') == 'true' or 'disabled' in button_attrs.get('class', '') or 'NPEfkd' in button_attrs.get('class', ''):
+                print("Submit button is disabled, cannot proceed")
+                continue
+
+            time.sleep(2)  # Delay to ensure form is ready
+            try:
+                submit_button.click()
+                print("Submit button clicked (standard)")
+            except:
+                print("Standard click failed, trying JavaScript click...")
+                driver.execute_script("arguments[0].click();", submit_button)
+                print("Submit button clicked (JavaScript)")
+            
+            # Try JavaScript form submission as final fallback
+            try:
+                form = driver.find_element(By.XPATH, "//form")
+                driver.execute_script("arguments[0].submit();", form)
+                print("Form submitted via JavaScript")
+            except:
+                print("JavaScript form submission not attempted (form not found)")
+
+            # Check for CAPTCHA
+            try:
+                captcha_container = driver.find_element(By.XPATH, "//div[@data-should-execute-invisible-captcha-challenge='true']")
+                print("CAPTCHA challenge detected, cannot proceed automatically")
+                continue
+            except:
+                pass  # No CAPTCHA detected
+
+            # Check for validation errors
+            try:
+                error_message = driver.find_element(By.XPATH, "//div[@role='alert' or contains(@class, 'error')]")
+                print(f"Form validation error detected: {error_message.text}")
+                continue
+            except:
+                pass  # No validation error found
 
             # Wait for the confirmation page
             WebDriverWait(driver, 10).until(
