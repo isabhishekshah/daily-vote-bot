@@ -6,7 +6,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import time
 import random
-
+import tempfile
 import os
 import platform
 
@@ -15,7 +15,6 @@ if platform.system() == "Windows":
     CHROMEDRIVER_PATH = "F:/Downloads/chromedriver-win64/chromedriver-win64/chromedriver.exe"
 else:
     CHROMEDRIVER_PATH = "/usr/bin/chromedriver"
-
 
 # URL of the Google Form
 FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSf2fHJ3ehIwzNqWJL4PWIhMUa2cOGQXc_k1Sto-u3LJMqY7Qg/viewform"
@@ -29,12 +28,9 @@ NOMINATION_MESSAGES = [
     "Compromised",
     "---Cuz why not---",
     "SORRY"
-
 ]
 
 # Set up Chrome options
-import tempfile
-
 chrome_options = Options()
 chrome_options.add_argument("--incognito")
 chrome_options.add_argument("--headless")                # run without UI
@@ -46,14 +42,12 @@ chrome_options.add_argument("--disable-gpu")             # recommended flag for 
 tmp_profile = tempfile.mkdtemp()
 chrome_options.add_argument(f"--user-data-dir={tmp_profile}")
 
-# chrome_options.add_argument("--headless")  # Uncomment for headless mode (no visible browser)
-
 # Initialize WebDriver
 service = Service(CHROMEDRIVER_PATH)
 driver = webdriver.Chrome(service=service, options=chrome_options)
 
 # Random number of submissions (7 to 14)
-num_submissions = random.randint(1, 2)
+num_submissions = random.randint(7, 14)
 print(f"Will submit {num_submissions} votes")
 
 try:
@@ -81,25 +75,41 @@ try:
             print(f"Error selecting 'Abhi' on attempt {i+1}: {e}")
             continue
 
-        # Fill in the Nomination Reason
+        # Fill in the Nomination Reason (optional)
+        message = NOMINATION_MESSAGES[i % len(NOMINATION_MESSAGES)]
         try:
             print("Filling nomination reason...")
-            message = NOMINATION_MESSAGES[i % len(NOMINATION_MESSAGES)]
-            nomination_field = WebDriverWait(driver, 5).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, "textarea.KHxj8b.tL9Q4c"))
-            )
+            # Try primary selector
+            try:
+                nomination_field = WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.XPATH, "//textarea[@aria-label='Your answer']"))
+                )
+            except:
+                print("Primary nomination selector failed, trying fallback...")
+                nomination_field = WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, "textarea.KHxj8b.tL9Q4c"))
+                )
+            nomination_field.clear()  # Clear any existing text
             nomination_field.send_keys(message)
             print(f"Nomination reason set to: {message}")
         except Exception as e:
             print(f"Error filling nomination reason on attempt {i+1}: {e}")
-            continue
+            # Continue to submission since nomination is optional
 
         # Submit the form
         try:
             print("Looking for submit button...")
-            submit_button = WebDriverWait(driver, 5).until(
-                EC.element_to_be_clickable((By.XPATH, "//span[text()='Submit']"))
-            )
+            # Try primary selector
+            try:
+                submit_button = WebDriverWait(driver, 5).until(
+                    EC.element_to_be_clickable((By.XPATH, "//span[text()='Submit']"))
+                )
+            except:
+                print("Primary submit selector failed, trying fallback...")
+                submit_button = WebDriverWait(driver, 5).until(
+                    EC.element_to_be_clickable((By.XPATH, "//div[contains(text(), 'Submit')]"))
+                )
+            time.sleep(1)  # Brief delay to ensure form is ready
             submit_button.click()
             print("Submit button clicked")
 
@@ -118,4 +128,9 @@ try:
 finally:
     # Close the browser
     driver.quit()
+    # Clean up temporary profile
+    try:
+        os.rmdir(tmp_profile)
+    except:
+        pass
     print("Script completed")
