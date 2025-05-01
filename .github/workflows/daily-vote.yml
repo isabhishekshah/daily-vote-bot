@@ -1,8 +1,11 @@
 name: 🗳️ Daily Google-Form Vote
 
 on:
+  # allow manual runs from the Actions UI
+  workflow_dispatch:
+
+  # still run daily at 12:00 UTC (8 AM Eastern Daylight Time)
   schedule:
-    # 0 12 * * * = 12:00 UTC daily → 8 AM Eastern Daylight Time
     - cron: '0 12 * * *'
 
 jobs:
