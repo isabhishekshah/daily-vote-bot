@@ -33,8 +33,19 @@ NOMINATION_MESSAGES = [
 ]
 
 # Set up Chrome options
+import tempfile
+
 chrome_options = Options()
-chrome_options.add_argument("--incognito")  # Use incognito mode
+chrome_options.add_argument("--incognito")
+chrome_options.add_argument("--headless")                # run without UI
+chrome_options.add_argument("--no-sandbox")              # required in many Linux CI environments
+chrome_options.add_argument("--disable-dev-shm-usage")   # overcome limited /dev/shm
+chrome_options.add_argument("--disable-gpu")             # recommended flag for headless on Linux
+
+# create a unique user-data-dir so profiles never collide
+tmp_profile = tempfile.mkdtemp()
+chrome_options.add_argument(f"--user-data-dir={tmp_profile}")
+
 # chrome_options.add_argument("--headless")  # Uncomment for headless mode (no visible browser)
 
 # Initialize WebDriver
