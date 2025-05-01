@@ -7,8 +7,15 @@ from selenium.webdriver.support import expected_conditions as EC
 import time
 import random
 
+import os
+import platform
+
 # Path to ChromeDriver
-CHROMEDRIVER_PATH = "F:/Downloads/chromedriver-win64/chromedriver-win64/chromedriver.exe"
+if platform.system() == "Windows":
+    CHROMEDRIVER_PATH = "F:/Downloads/chromedriver-win64/chromedriver-win64/chromedriver.exe"
+else:
+    CHROMEDRIVER_PATH = "/usr/bin/chromedriver"
+
 
 # URL of the Google Form
 FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSf2fHJ3ehIwzNqWJL4PWIhMUa2cOGQXc_k1Sto-u3LJMqY7Qg/viewform"
